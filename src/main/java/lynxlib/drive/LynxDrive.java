@@ -58,17 +58,21 @@ public class LynxDrive {
      * @param rotation robot's rotation, clockwise is positive
      */
     public void arcadeDrive(double forward, double rotation) {
+
         forward = scaleJoystickInput(forward, fwdScale);
         rotation = scaleJoystickInput(rotation, rotScale);
 
-        setOutput(forward + rotation, forward - rotation);
+        double left = forward + rotation;
+        double right = forward - rotation;
+
+        setOutput(left, right);
     }
 
     /**
      * Curvature drive method using LynxDrive
      *
-     * @param forward  robot's speed along the x-axis
-     * @param rotation robot's rotation, gets applied along a curvature radius
+     * @param forward   robot's speed along the x-axis
+     * @param rotation  robot's rotation, gets applied along a curvature radius
      * @param quickTurn If true, overrides curvature and allows for arcade type movement
      */
     public void curvatureDrive(double forward, double rotation, boolean quickTurn) {
@@ -77,22 +81,25 @@ public class LynxDrive {
         forward = scaleJoystickInput(forward, fwdScale);
         rotation = scaleJoystickInput(rotation, rotScale);
 
-        if(forward == 0){
+
+        if (forward == 0) {
             quickTurn = true;
         }
 
-        if(quickTurn){
+        if (quickTurn) {
             left = forward + rotation;
             right = forward - rotation;
-        }
-        else{
+        } else {
             left = forward + curve.apply(forward) * rotation;
             right = forward - curve.apply(forward) * rotation;
         }
 
         double[] normalSpeed = normalizeSpeeds(left, right);
 
-        setOutput(normalSpeed[0], normalSpeed[1]);
+        left = normalSpeed[0];
+        right = normalSpeed[1];
+
+        setOutput(left, right);
     }
 
     /**
@@ -118,9 +125,35 @@ public class LynxDrive {
         left = Math.max(-kMaxOutput, Math.min(kMaxOutput, left));
         right = Math.max(-kMaxOutput, Math.min(kMaxOutput, right));
 
+        if(closedLoopControlEnabled) {
+            left = scaleMaxSpeed(left);
+            right = scaleMaxSpeed(right);
+
+            leftVelocityPID.setSetpoint(left);
+            rightVelocityPID.setSetpoint(right);
+
+            left = leftVelocityPID.calculate(leftEncoder.getRate(), 0.02);
+            right = leftVelocityPID.calculate(leftEncoder.getRate(), 0.02);
+
+        }
         leftMotor.set(left);
         rightMotor.set(right);
     }
+
+    /**
+     * Calculates a the fractional out with kV and V-Intercept
+     *
+     * @param speed speed
+     * @return fractional out to be set by a motor
+     */
+    private double calculateFractionalFeedForward(double speed) {
+        if (speed == 0) {
+            return 0;
+        } else {
+            return (speed * kV + Math.copySign(kS, speed)) / 12;
+        }
+    }
+
 
     /**
      * Prepares user joystick input to be given to the drive methods
@@ -150,6 +183,13 @@ public class LynxDrive {
         return input * kMaxSpeed;
     }
 
+    /**
+     * Normalizes the speed when using Curvature drive
+     *
+     * @param left  the left speed
+     * @param right the right speed
+     * @return normalized left and right speed
+     */
     private double[] normalizeSpeeds(double left, double right) {
         double maxMagnitude = Math.max(Math.abs(left), Math.abs(right));
         if (maxMagnitude > 1) {
@@ -158,6 +198,7 @@ public class LynxDrive {
         }
         return new double[]{left, right};
     }
+
 
     /**
      * Sets the left and right encoder
@@ -213,7 +254,7 @@ public class LynxDrive {
      * @param enabled
      */
     public void setClosedLoopEnabled(boolean enabled) {
-        if (enabled == true) {
+        if (enabled) {
             verifyClosedLoopComponents();
         }
         this.closedLoopControlEnabled = enabled;
@@ -226,7 +267,7 @@ public class LynxDrive {
      * @param enabled
      */
     public void setGyroStabilizationEnabled(boolean enabled) {
-        if (enabled == true) {
+        if (enabled) {
             verifyGyroStabilizationComponents();
         }
         this.gyroStabilizationEnabled = enabled;
