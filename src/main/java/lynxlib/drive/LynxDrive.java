@@ -122,8 +122,6 @@ public class LynxDrive {
      * @param right the input given to the right motor
      */
     private void setOutput(double left, double right) {
-        left = Math.max(-kMaxOutput, Math.min(kMaxOutput, left));
-        right = Math.max(-kMaxOutput, Math.min(kMaxOutput, right));
 
         if(closedLoopControlEnabled) {
             left = scaleMaxSpeed(left);
@@ -136,6 +134,10 @@ public class LynxDrive {
             right = leftVelocityPID.calculate(leftEncoder.getRate(), 0.02);
 
         }
+
+        left = Math.max(-kMaxOutput, Math.min(kMaxOutput, left));
+        right = Math.max(-kMaxOutput, Math.min(kMaxOutput, right));
+
         leftMotor.set(left);
         rightMotor.set(right);
     }
