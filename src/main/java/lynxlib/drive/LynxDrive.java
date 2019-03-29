@@ -27,6 +27,8 @@ public class LynxDrive {
     private boolean gyroStabilizationEnabled;
     private boolean closedLoopControlEnabled;
 
+    private boolean inLoop;
+
     private Function<Double, Double> curve = Function.identity();
     private Function<Double, Double> fwdScale = x -> Math.copySign(x * x, x);
     private Function<Double, Double> rotScale = x -> Math.copySign(x * x, x);
@@ -37,6 +39,7 @@ public class LynxDrive {
     private double kDeadBand = 0.1;
     private double kMaxOutput = 0.8;
     private double kMaxSpeed = 1;
+    private double kGyroTurnThreshold = 0.1;
 
     /**
      * Constuct a LynxDrive
@@ -64,6 +67,12 @@ public class LynxDrive {
 
         double left = forward + rotation;
         double right = forward - rotation;
+
+        if(gyroStabilizationEnabled){
+            double stabilizationOutput = applyGyroStabilization(rotation > 0);
+            left += stabilizationOutput;
+            right -= stabilizationOutput;
+        }
 
         setOutput(left, right);
     }
@@ -94,6 +103,12 @@ public class LynxDrive {
             right = forward - curve.apply(forward) * rotation;
         }
 
+        if (gyroStabilizationEnabled) {
+            double stabilizationOutput = applyGyroStabilization(rotation > 0);
+            left += stabilizationOutput;
+            right -= stabilizationOutput;
+        }
+
         double[] normalSpeed = normalizeSpeeds(left, right);
 
         left = normalSpeed[0];
@@ -105,33 +120,40 @@ public class LynxDrive {
     /**
      * Tank drive method using LynxDrive
      *
-     * @param left
-     * @param right
+     * @param left  left Speed
+     * @param right right Speed
      */
     public void tankDrive(double left, double right) {
         left = scaleJoystickInput(left, fwdScale);
         right = scaleJoystickInput(right, fwdScale);
 
+        if(gyroStabilizationEnabled){
+            double stabilizationOutput = applyGyroStabilization(left - right > 0);
+            left += stabilizationOutput;
+            right -= stabilizationOutput;
+        }
+
         setOutput(left, right);
     }
 
     /**
-     * Sets the motors to the outputs
+     * Gives the motor the correct output
+     * If closedLoopControl is enabled, converts inputs into speeds and feeds them to a PID, where the output is calculated
      *
      * @param left  the input given to the left motor
      * @param right the input given to the right motor
      */
     private void setOutput(double left, double right) {
 
-        if(closedLoopControlEnabled) {
+        if (closedLoopControlEnabled) {
             left = scaleMaxSpeed(left);
             right = scaleMaxSpeed(right);
 
             leftVelocityPID.setSetpoint(left);
             rightVelocityPID.setSetpoint(right);
 
-            left = leftVelocityPID.calculate(leftEncoder.getRate(), 0.02);
-            right = leftVelocityPID.calculate(leftEncoder.getRate(), 0.02);
+            left = leftVelocityPID.calculate(leftEncoder.getRate(), 0.02) + calculateFractionalFeedForward(leftEncoder.getRate());
+            right = leftVelocityPID.calculate(leftEncoder.getRate(), 0.02) + calculateFractionalFeedForward(rightEncoder.getRate());
 
         }
 
@@ -156,6 +178,30 @@ public class LynxDrive {
         }
     }
 
+
+    /**
+     * Applies Gyro Stabilization to keep the robot driving straight when enabled
+     *
+     * @param isTurnCommanded if the robot is being commanded to turn
+     * @return the output for a speed differential between the left and right sides of the drivetrain
+     */
+    private double applyGyroStabilization(boolean isTurnCommanded) {
+        double output = 0;
+
+        if (!isTurnCommanded) {
+            if (!inLoop && Math.abs(gyro.getRate()) < kGyroTurnThreshold) {
+                gyroPID.setSetpoint(gyro.getAngle());
+                inLoop = true;
+            } else {
+                output = gyroPID.calculate(gyro.getAngle(), 0.02);
+            }
+
+        } else {
+            inLoop = false;
+            output = 0;
+        }
+        return output;
+    }
 
     /**
      * Prepares user joystick input to be given to the drive methods
@@ -230,9 +276,9 @@ public class LynxDrive {
     }
 
     /**
-     * Sets the Gyro Object
+     * Sets the Gyro Object to be used for Gyro Stabilization
      *
-     * @param gyro
+     * @param gyro the gyro object
      */
     public void setGyro(Gyro gyro) {
         requireNonNull(gyro);
@@ -240,20 +286,42 @@ public class LynxDrive {
     }
 
     /**
-     * Sets the Gyro PID
+     * Sets the Gyro PID to be used for Gyro Stabilization
      *
      * @param gyroPID the Gyro PID
      */
     public void setGyroPID(CheesyPID gyroPID) {
         requireNonNull(gyroPID);
         this.gyroPID = gyroPID;
+        this.gyroPID.setContinuous(true);
+        this.gyroPID.setInputRange(0, 360);
+    }
+
+    /**
+     * Sets the max speed to be scaled to when using closed loop control
+     *
+     * @param speed max speed - same unit as encoder distance per pulse
+     */
+    public void setMaxSpeed(double speed) {
+        this.kMaxSpeed = speed;
+    }
+
+    /**
+     * Sets the constants to be used in the feedforward calculations
+     *
+     * @param kV         kV
+     * @param vIntercept vIntercept
+     */
+    public void setFeedForwardConstants(double kV, double vIntercept) {
+        this.kV = kV;
+        this.kS = vIntercept;
     }
 
     /**
      * Sets the state of closedLoopControl
      * Only can be enabled after passing in both side PID's and Encoders
      *
-     * @param enabled
+     * @param enabled state of closed loop control
      */
     public void setClosedLoopEnabled(boolean enabled) {
         if (enabled) {
@@ -266,7 +334,7 @@ public class LynxDrive {
      * Sets the state  of Gyro Stabilization
      * Can only be enabled after passing in both a Gyro PID and Gyro Object
      *
-     * @param enabled
+     * @param enabled state of gyro stabilization
      */
     public void setGyroStabilizationEnabled(boolean enabled) {
         if (enabled) {
@@ -292,7 +360,7 @@ public class LynxDrive {
 
     /**
      * Verifies if components for gyro stabilization is set
-     * Throwws RequiredControllerNotPresentException if one is missing
+     * Throws RequiredControllerNotPresentException if one is missing
      */
     private void verifyGyroStabilizationComponents() {
         if (this.gyro == null || this.gyroPID == null) {
