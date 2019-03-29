@@ -40,6 +40,7 @@ public class LynxDrive {
     private double kMaxOutput = 0.8;
     private double kMaxSpeed = 1;
     private double kGyroTurnThreshold = 0.1;
+    private double kTankDriveGyroTolerance = 0.1;
 
     /**
      * Constuct a LynxDrive
@@ -128,7 +129,7 @@ public class LynxDrive {
         right = scaleJoystickInput(right, fwdScale);
 
         if(gyroStabilizationEnabled){
-            double stabilizationOutput = applyGyroStabilization(left - right > 0);
+            double stabilizationOutput = applyGyroStabilization(Math.abs(left - right) > kTankDriveGyroTolerance);
             left += stabilizationOutput;
             right -= stabilizationOutput;
         }
@@ -315,6 +316,33 @@ public class LynxDrive {
     public void setFeedForwardConstants(double kV, double vIntercept) {
         this.kV = kV;
         this.kS = vIntercept;
+    }
+
+    /**
+     * Sets the tolerance for gyro stabilization in tank drive
+     *
+     * @param tolerance the tolerance
+     */
+    public void setkTankDriveGyroTolerance(double tolerance){
+        this.kTankDriveGyroTolerance = tolerance;
+    }
+
+    /**
+     * Sets the joystick deadband
+     *
+     * @param deadBand the deadband
+     */
+    public void setkDeadBand(double deadBand){
+        this.kDeadBand = deadBand;
+    }
+
+    /**
+     * Sets the threshold for how much gyro turn counts as actually turning
+     *
+     * @param threshold the threshold
+     */
+    public void setkGyroTurnThreshold(double threshold){
+        this.kGyroTurnThreshold = threshold;
     }
 
     /**
