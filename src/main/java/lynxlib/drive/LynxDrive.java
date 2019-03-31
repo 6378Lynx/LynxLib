@@ -80,7 +80,7 @@ public class LynxDrive {
         left = leftRamp.rampValue(left);
         right = rightRamp.rampValue(right);
 
-        if(gyroStabilizationEnabled){
+        if (gyroStabilizationEnabled) {
             double stabilizationOutput = applyGyroStabilization(rotation > 0);
             left += stabilizationOutput;
             right -= stabilizationOutput;
@@ -145,7 +145,7 @@ public class LynxDrive {
         left = leftRamp.rampValue(left);
         right = rightRamp.rampValue(right);
 
-        if(gyroStabilizationEnabled){
+        if (gyroStabilizationEnabled) {
             double stabilizationOutput = applyGyroStabilization(Math.abs(left - right) > kTankDriveGyroTolerance);
             left += stabilizationOutput;
             right -= stabilizationOutput;
@@ -294,7 +294,7 @@ public class LynxDrive {
         rightVelocityPID = rightPID;
     }
 
-    public void setMaxChangePerSecond(double changePerSecond){
+    public void setMaxChangePerSecond(double changePerSecond) {
         leftRamp.setMaxChangePerSecond(changePerSecond);
         rightRamp.setMaxChangePerSecond(changePerSecond);
     }
@@ -346,7 +346,7 @@ public class LynxDrive {
      *
      * @param tolerance the tolerance
      */
-    public void setkTankDriveGyroTolerance(double tolerance){
+    public void setkTankDriveGyroTolerance(double tolerance) {
         kTankDriveGyroTolerance = tolerance;
     }
 
@@ -355,7 +355,7 @@ public class LynxDrive {
      *
      * @param deadBand the deadband
      */
-    public void setkDeadBand(double deadBand){
+    public void setkDeadBand(double deadBand) {
         kDeadBand = deadBand;
     }
 
@@ -364,7 +364,7 @@ public class LynxDrive {
      *
      * @param threshold the threshold
      */
-    public void setkGyroTurnThreshold(double threshold){
+    public void setkGyroTurnThreshold(double threshold) {
         kGyroTurnThreshold = threshold;
     }
 
