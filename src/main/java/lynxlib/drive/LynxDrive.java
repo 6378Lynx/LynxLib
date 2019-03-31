@@ -5,6 +5,7 @@ import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.interfaces.Gyro;
 import lynxlib.util.CheesyPID;
 import lynxlib.util.exceptions.RequiredControllerNotPresentException;
+import lynxlib.util.SetpointRamp;
 
 import java.util.function.Function;
 
@@ -20,6 +21,9 @@ public class LynxDrive {
 
     private CheesyPID leftVelocityPID;
     private CheesyPID rightVelocityPID;
+
+    private SetpointRamp leftRamp = new SetpointRamp();
+    private SetpointRamp rightRamp = new SetpointRamp();
 
     private Gyro gyro;
     private CheesyPID gyroPID;
@@ -53,6 +57,10 @@ public class LynxDrive {
         requireNonNull(rightMotor);
         this.leftMotor = leftMotor;
         this.rightMotor = rightMotor;
+
+        leftRamp.setMaxChangePerSecond(3);
+        rightRamp.setMaxChangePerSecond(3);
+
     }
 
     /**
@@ -68,6 +76,9 @@ public class LynxDrive {
 
         double left = forward + rotation;
         double right = forward - rotation;
+
+        left = leftRamp.rampValue(left);
+        right = rightRamp.rampValue(right);
 
         if(gyroStabilizationEnabled){
             double stabilizationOutput = applyGyroStabilization(rotation > 0);
@@ -104,6 +115,9 @@ public class LynxDrive {
             right = forward - curve.apply(forward) * rotation;
         }
 
+        left = leftRamp.rampValue(left);
+        right = rightRamp.rampValue(right);
+
         if (gyroStabilizationEnabled) {
             double stabilizationOutput = applyGyroStabilization(rotation > 0);
             left += stabilizationOutput;
@@ -128,11 +142,15 @@ public class LynxDrive {
         left = scaleJoystickInput(left, fwdScale);
         right = scaleJoystickInput(right, fwdScale);
 
+        left = leftRamp.rampValue(left);
+        right = rightRamp.rampValue(right);
+
         if(gyroStabilizationEnabled){
             double stabilizationOutput = applyGyroStabilization(Math.abs(left - right) > kTankDriveGyroTolerance);
             left += stabilizationOutput;
             right -= stabilizationOutput;
         }
+
 
         setOutput(left, right);
     }
@@ -272,8 +290,13 @@ public class LynxDrive {
     public void setVelocityPIDs(CheesyPID leftPID, CheesyPID rightPID) {
         requireNonNull(leftPID);
         requireNonNull(rightPID);
-        this.leftVelocityPID = leftPID;
-        this.rightVelocityPID = rightPID;
+        leftVelocityPID = leftPID;
+        rightVelocityPID = rightPID;
+    }
+
+    public void setMaxChangePerSecond(double changePerSecond){
+        leftRamp.setMaxChangePerSecond(changePerSecond);
+        rightRamp.setMaxChangePerSecond(changePerSecond);
     }
 
     /**
@@ -304,7 +327,7 @@ public class LynxDrive {
      * @param speed max speed - same unit as encoder distance per pulse
      */
     public void setMaxSpeed(double speed) {
-        this.kMaxSpeed = speed;
+        kMaxSpeed = speed;
     }
 
     /**
@@ -324,7 +347,7 @@ public class LynxDrive {
      * @param tolerance the tolerance
      */
     public void setkTankDriveGyroTolerance(double tolerance){
-        this.kTankDriveGyroTolerance = tolerance;
+        kTankDriveGyroTolerance = tolerance;
     }
 
     /**
@@ -333,7 +356,7 @@ public class LynxDrive {
      * @param deadBand the deadband
      */
     public void setkDeadBand(double deadBand){
-        this.kDeadBand = deadBand;
+        kDeadBand = deadBand;
     }
 
     /**
@@ -342,7 +365,7 @@ public class LynxDrive {
      * @param threshold the threshold
      */
     public void setkGyroTurnThreshold(double threshold){
-        this.kGyroTurnThreshold = threshold;
+        kGyroTurnThreshold = threshold;
     }
 
     /**
@@ -355,7 +378,7 @@ public class LynxDrive {
         if (enabled) {
             verifyClosedLoopComponents();
         }
-        this.closedLoopControlEnabled = enabled;
+        closedLoopControlEnabled = enabled;
     }
 
     /**
@@ -368,7 +391,7 @@ public class LynxDrive {
         if (enabled) {
             verifyGyroStabilizationComponents();
         }
-        this.gyroStabilizationEnabled = enabled;
+        gyroStabilizationEnabled = enabled;
     }
 
     /**
@@ -376,8 +399,8 @@ public class LynxDrive {
      * Throws RequiredControllerNotPresentException if one is missing
      */
     private void verifyClosedLoopComponents() {
-        if (this.leftVelocityPID == null || this.rightVelocityPID == null ||
-                this.leftEncoder == null || this.rightEncoder == null) {
+        if (leftVelocityPID == null || rightVelocityPID == null ||
+                leftEncoder == null || rightEncoder == null) {
             throw new RequiredControllerNotPresentException(
                     "Component for Closed Loop Control Missing \n" +
                             "Set Encoders and Velocity PID Objects"
@@ -391,7 +414,7 @@ public class LynxDrive {
      * Throws RequiredControllerNotPresentException if one is missing
      */
     private void verifyGyroStabilizationComponents() {
-        if (this.gyro == null || this.gyroPID == null) {
+        if (gyro == null || gyroPID == null) {
             throw new RequiredControllerNotPresentException(
                     "Component for Gyro Stabilization Missing \n" +
                             "Set Gyro and GyroPID objects"
