@@ -28,8 +28,8 @@ public class LynxDrive {
     private Gyro gyro;
     private CheesyPID gyroPID;
 
-    private boolean gyroStabilizationEnabled;
-    private boolean closedLoopControlEnabled;
+    private boolean gyroStabilizationEnabled = false;
+    private boolean closedLoopControlEnabled = false;
 
     private boolean inLoop;
 
