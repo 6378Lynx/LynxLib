@@ -171,8 +171,8 @@ public class LynxDrive {
             leftVelocityPID.setSetpoint(left);
             rightVelocityPID.setSetpoint(right);
 
-            left = leftVelocityPID.calculate(leftEncoder.getRate(), 0.02) + calculateFractionalFeedForward(leftEncoder.getRate());
-            right = leftVelocityPID.calculate(leftEncoder.getRate(), 0.02) + calculateFractionalFeedForward(rightEncoder.getRate());
+            left = leftVelocityPID.calculate(leftEncoder.getRate(), 0.02) + calculateFractionalFeedForward(left);
+            right = leftVelocityPID.calculate(leftEncoder.getRate(), 0.02) + calculateFractionalFeedForward(right);
 
         }
 
