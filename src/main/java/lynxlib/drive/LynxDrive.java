@@ -45,6 +45,7 @@ public class LynxDrive {
     private double kMaxSpeed = 1;
     private double kGyroTurnThreshold = 0.1;
     private double kTankDriveGyroTolerance = 0.1;
+    private double gyroDeadband = 2;
 
     /**
      * Constuct a LynxDrive
@@ -209,14 +210,18 @@ public class LynxDrive {
 
         if (!isTurnCommanded) {
             if (!inLoop && Math.abs(gyro.getRate()) < kGyroTurnThreshold) {
-                gyroPID.setSetpoint(gyro.getAngle());
+                gyroPID.setSetpoint(Math.IEEEremainder(gyro.getAngle(),360)+180);
                 inLoop = true;
             } else {
-                output = gyroPID.calculate(gyro.getAngle(), 0.02);
+                output = gyroPID.calculate(Math.IEEEremainder(gyro.getAngle(),360)+180, 0.02);
             }
 
         } else {
             inLoop = false;
+            output = 0;
+        }
+
+        if(Math.abs(gyroPID.getError()) < gyroDeadband){
             output = 0;
         }
         return output;
