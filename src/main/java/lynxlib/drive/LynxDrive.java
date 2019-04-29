@@ -119,7 +119,7 @@ public class LynxDrive {
         right = rightRamp.rampValue(right);
 
         if (gyroStabilizationEnabled) {
-            double stabilizationOutput = applyGyroStabilization(rotation > 0);
+            double stabilizationOutput = applyGyroStabilization(Math.abs(rotation) > 0);
             left += stabilizationOutput;
             right -= stabilizationOutput;
         }
