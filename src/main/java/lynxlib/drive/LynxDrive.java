@@ -234,7 +234,6 @@ public class LynxDrive {
         if (Math.abs(input) < kDeadBand) {
             input = 0;
         } else {
-            input = Math.max(-kMaxOutput, Math.min(kMaxOutput, input));
             input = scale.apply(input);
         }
         return input;
