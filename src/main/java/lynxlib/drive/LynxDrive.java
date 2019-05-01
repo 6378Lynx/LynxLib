@@ -212,7 +212,7 @@ public class LynxDrive {
             if (!inLoop && Math.abs(gyro.getRate()) < kGyroTurnThreshold) {
                 gyroPID.setSetpoint(Math.IEEEremainder(gyro.getAngle(),360)+180);
                 inLoop = true;
-            } else {
+            } else if(inLoop) {
                 output = gyroPID.calculate(Math.IEEEremainder(gyro.getAngle(),360)+180, 0.02);
             }
 
