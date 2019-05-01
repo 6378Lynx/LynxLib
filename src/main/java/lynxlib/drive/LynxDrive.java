@@ -205,20 +205,20 @@ public class LynxDrive {
      * @param isTurnCommanded if the robot is being commanded to turn
      * @return the output for a speed differential between the left and right sides of the drivetrain
      */
-    private double applyGyroStabilization(boolean isTurnCommanded) {
+     private double applyGyroStabilization(boolean isTurnCommanded) {
         double output = 0;
 
         if (!isTurnCommanded) {
             if (!inLoop && Math.abs(gyro.getRate()) < kGyroTurnThreshold) {
-                gyroPID.setSetpoint(Math.IEEEremainder(gyro.getAngle(),360)+180);
                 inLoop = true;
             } else {
                 output = gyroPID.calculate(Math.IEEEremainder(gyro.getAngle(),360)+180, 0.02);
             }
 
-        } else {
+        } else{
             inLoop = false;
-            output = 0;
+            gyroPID.setSetpoint(Math.IEEEremainder(gyro.getAngle(),360)+180);
+            return 0;
         }
 
         if(Math.abs(gyroPID.getError()) < gyroDeadband){
